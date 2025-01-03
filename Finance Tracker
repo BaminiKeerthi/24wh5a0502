@@ -1,0 +1,243 @@
+package javapractice;
+
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+public class FinanceTrackerGUI {
+    private Stack<Transaction> transactions;
+    private double totalIncome;
+    private double totalExpense;
+    private DefaultTableModel tableModel;
+
+    public FinanceTrackerGUI() {
+        transactions = new Stack<>(); // Initialize the custom stack
+        totalIncome = 0.0;
+        totalExpense = 0.0;
+
+        // Example transactions
+        transactions.push(new Transaction("Salary", "Income", 5000.00, "2024-11-01", true));
+        transactions.push(new Transaction("Groceries", "Expense", -50.00, "2024-11-02", false));
+        transactions.push(new Transaction("Utilities", "Expense", -100.00, "2024-11-03", false));
+
+        // Calculating total income and expenses
+        for (Transaction transaction : transactions.getElements()) {
+            if (transaction.isIncome) {
+                totalIncome += transaction.amount;
+            } else {
+                totalExpense += transaction.amount;
+            }
+        }
+
+        // Setup GUI
+        setupGUI();
+    }
+
+    private void setupGUI() {
+        JFrame frame = new JFrame("Finance Tracker");
+        frame.setLayout(new BorderLayout());
+
+        // Balance Overview Panel
+        JPanel balancePanel = new JPanel();
+        balancePanel.setBackground(new Color(135, 206, 250)); // Light blue background
+        balancePanel.setLayout(new GridLayout(4, 1)); // Four rows
+
+        JLabel incomeLabel = new JLabel("Total Income: " + totalIncome);
+        incomeLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        JLabel expenseLabel = new JLabel("Total Expense: " + totalExpense);
+        expenseLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        JLabel balanceLabel = new JLabel("Current Balance: " + (totalIncome + totalExpense));
+        balanceLabel.setFont(new Font("Arial", Font.BOLD, 16));
+
+        balancePanel.add(incomeLabel);
+        balancePanel.add(expenseLabel);
+        balancePanel.add(new JLabel(" ")); // Empty label for space
+        balancePanel.add(balanceLabel);
+        frame.add(balancePanel, BorderLayout.NORTH);
+
+        // Transaction Table
+        String[] columns = {"Purpose", "Type", "Amount", "Date"};
+        tableModel = new DefaultTableModel(columns, 0);
+        updateTransactionTable();
+        JTable transactionTable = new JTable(tableModel);
+        transactionTable.setFillsViewportHeight(true);
+        transactionTable.setGridColor(Color.BLACK);
+        transactionTable.setShowGrid(true);
+        transactionTable.setBackground(new Color(240, 255, 255)); // Light cyan background
+        transactionTable.setFont(new Font("Arial", Font.PLAIN, 14));
+        frame.add(new JScrollPane(transactionTable), BorderLayout.CENTER);
+
+        // Add Transaction Form
+        JPanel addPanel = new JPanel(new GridLayout(6, 2));
+        addPanel.setBackground(new Color(245, 245, 220)); // Beige background
+        addPanel.add(new JLabel("Purpose:"));
+        String[] purposes = {"Salary", "Groceries", "Utilities", "Dining", "Entertainment", "Investment"};
+        JComboBox<String> purposeField = new JComboBox<>(purposes);
+        addPanel.add(purposeField);
+        addPanel.add(new JLabel("Amount:"));
+        JTextField amountField = new JTextField();
+        addPanel.add(amountField);
+        addPanel.add(new JLabel("Date:"));
+
+        // Date Picker using JSpinner
+        JSpinner dateSpinner = new JSpinner(new SpinnerDateModel());
+        JSpinner.DateEditor dateEditor = new JSpinner.DateEditor(dateSpinner, "yyyy-MM-dd");
+        dateSpinner.setEditor(dateEditor);
+        addPanel.add(dateSpinner);
+
+        // Income or Expense Radio Buttons
+        ButtonGroup typeGroup = new ButtonGroup();
+        JRadioButton incomeRadio = new JRadioButton("Income");
+        JRadioButton expenseRadio = new JRadioButton("Expense");
+        typeGroup.add(incomeRadio);
+        typeGroup.add(expenseRadio);
+        incomeRadio.setSelected(true);
+        addPanel.add(new JLabel("Type:"));
+        JPanel typePanel = new JPanel();
+        typePanel.add(incomeRadio);
+        typePanel.add(expenseRadio);
+        addPanel.add(typePanel);
+
+        JButton addButton = new JButton("Add Transaction");
+        addButton.setBackground(new Color(60, 179, 113)); // Green background
+        addButton.setForeground(Color.WHITE);
+        addPanel.add(addButton);
+
+        // Financial Advice Section
+        JPanel advicePanel = new JPanel(new GridLayout(2, 1));
+        advicePanel.setBackground(new Color(245, 245, 220)); // Beige background
+        advicePanel.add(new JLabel("Select Advice:"));
+        String[] advices = {"Create a budget", "Save regularly", "Invest in education", "Seek professional advice", "Reduce expenses"};
+        JComboBox<String> adviceField = new JComboBox<>(advices);
+        advicePanel.add(adviceField);
+        JButton adviceButton = new JButton("Get Advice");
+        adviceButton.setBackground(new Color(60, 179, 113)); // Green background
+        adviceButton.setForeground(Color.WHITE);
+        advicePanel.add(adviceButton);
+
+        adviceButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String selectedAdvice = (String) adviceField.getSelectedItem();
+                JOptionPane.showMessageDialog(frame, getAdvice(selectedAdvice), "Financial Advice", JOptionPane.INFORMATION_MESSAGE);
+            }
+        });
+
+        frame.add(advicePanel, BorderLayout.EAST);
+
+        addButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String purpose = (String) purposeField.getSelectedItem();
+                double amount = 0.0;
+
+                // Validate amount input
+                try {
+                    amount = Double.parseDouble(amountField.getText());
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(frame, "Please enter a valid amount.", "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
+                Date date = (Date) dateSpinner.getValue();
+                String dateString = new SimpleDateFormat("yyyy-MM-dd").format(date);
+                boolean isIncome = incomeRadio.isSelected();
+
+                if (!isIncome) {
+                    amount = -Math.abs(amount); // Ensure amount is negative for expenses
+                }
+
+                // Create and add the new transaction
+                Transaction newTransaction = new Transaction(purpose, isIncome ? "Income" : "Expense", amount, dateString, isIncome);
+                transactions.push(newTransaction);
+
+                if (isIncome) {
+                    totalIncome += amount;
+                } else {
+                    totalExpense += amount;
+                }
+
+                // Update the labels
+                incomeLabel.setText("Total Income: " + totalIncome);
+                expenseLabel.setText("Total Expense: " + totalExpense);
+                balanceLabel.setText("Current Balance: " + (totalIncome + totalExpense));
+
+                // Update the transaction table
+                updateTransactionTable();
+
+                // Clear input fields
+                amountField.setText("");
+                dateSpinner.setValue(new Date());
+                incomeRadio.setSelected(true);
+            }
+        });
+
+        frame.add(addPanel, BorderLayout.SOUTH);
+
+        frame.setSize(800, 400); // Increased width to accommodate advice panel
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setVisible(true);
+    }
+
+    private String getAdvice(String advice) {
+        switch (advice) {
+            case "Create a budget":
+                return "Start by tracking your income and expenses. Create a budget that allocates funds to necessary expenses first and identifies areas where you can save.";
+            case "Save regularly":
+                return "Make saving a habit by setting aside a portion of your income regularly. Consider setting up automatic transfers to a savings account.";
+            case "Invest in education":
+                return "Investing in your education can open up new career opportunities and increase your earning potential.";
+            case "Seek professional advice":
+                return "Consult a financial advisor to help you create a financial plan that suits your individual needs and goals.";
+            case "Reduce expenses":
+                return "Look for ways to cut down on unnecessary expenses. This might include dining out less, canceling unused subscriptions, or shopping smarter.";
+            default:
+                return "No advice available.";
+        }
+    }
+
+    private void updateTransactionTable() {
+        // Clear the existing rows
+        tableModel.setRowCount(0);
+
+        // Populate the table with updated data
+        for (Transaction t : transactions.getElements()) {
+            tableModel.addRow(new Object[]{
+                    t.purpose,
+                    t.category,
+                    t.amount,
+                    t.date
+            });
+        }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                new FinanceTrackerGUI();
+            }
+        });
+    }
+
+    // Transaction class to store individual transaction details
+    class Transaction {
+        String purpose;
+        String category;
+        double amount;
+        String date;
+        boolean isIncome;
+
+        Transaction(String purpose, String category, double amount, String date, boolean isIncome) {
+            this.purpose = purpose;
+            this.category = category;
+            this.amount = amount;
+            this.date = date;
+            this.isIncome = isIncome;
+        }
+    }
+}
